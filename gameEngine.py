@@ -1,24 +1,44 @@
 import tcod
 
 from input_handlers import handle_keys
+from entity import Entity
+from render_functions import clear_all, render_all
+from map_objects.game_map import GameMap
 
 def main():
     # Defines
-    SCREEN_WIDTH = 80
-    SCREEN_HEIGHT = 50
+    screen_width = 80
+    screen_height = 50
+    map_width = 80
+    map_height = 45
+
+    room_max_size = 10
+    room_min_size = 3
+    max_rooms = 7
+
+    colours = {
+        'dark_wall': tcod.Color(5, 0, 25),
+        'dark_ground': tcod.Color(150, 150, 150)
+    }
+
     # Set custom font
     font_path = 'arial10x10.png'
     font_flags = tcod.FONT_TYPE_GREYSCALE | tcod.FONT_LAYOUT_TCOD
     window_title = 'Roguelike!'
     fullscreen = False
+
     # Track player
-    player_x = SCREEN_WIDTH // 2
-    player_y = SCREEN_HEIGHT // 2
+    player = Entity(int(screen_width/2), int(screen_height/2), "@", tcod.white)
+    npc = Entity(int(screen_width/ 2 - 5), int(screen_height/2), "@", tcod.yellow)
+    entities = [npc, player]
 
     tcod.console_set_custom_font(font_path, font_flags)
-    tcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, window_title, fullscreen)
+    tcod.console_init_root(screen_width, screen_height, window_title, fullscreen)
 
-    console = tcod.console_new(SCREEN_WIDTH, SCREEN_HEIGHT)
+    console = tcod.console_new(screen_width, screen_height)
+
+    game_map = GameMap(map_width, map_height)
+    game_map.make_map(max_rooms, room_min_size, room_max_size, map_width, map_height, player)
 
     key = tcod.Key()
     mouse = tcod.Mouse()
@@ -26,11 +46,10 @@ def main():
     while not (tcod.console_is_window_closed()):
         tcod.sys_check_for_event(tcod.EVENT_KEY_PRESS, key, mouse)
 
-        tcod.console_set_default_foreground(console, tcod.white)
-        tcod.console_put_char(console, player_x, player_y, '@', tcod.BKGND_NONE)
-        tcod.console_blit(console, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, 0)
+        render_all(console, entities, game_map, screen_width, screen_height, colours)
+
         tcod.console_flush()
-        tcod.console_put_char(console, player_x, player_y, ' ', tcod.BKGND_NONE)
+        clear_all(console, entities)
 
         # Input handler
         action = handle_keys(key)
@@ -40,8 +59,8 @@ def main():
 
         if move:
             dx, dy = move
-            player_x += dx
-            player_y += dy
+            if not game_map.is_blocked(player.x + dx, player.y + dy):
+                player.move(dx, dy)
 
         if exit:
             return True
